@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Player {
+  id         String   @id @default(uuid())
+  username   String   @unique
+  totalWins  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  match1      Match[]  @relation("Player1Matches")
+  match2      Match[]  @relation("Player2Matches")
+  guesses     Guess[]
+  wonRounds   Round[]  @relation("RoundWinner")
+  wonMatches  Match[]  @relation("MatchWinner")
+}
+
+model Match {
+  id         String      @id @default(uuid())
+  player1    Player      @relation("Player1Matches", fields: [player1Id], references: [id])
+  player1Id  String
+  player2    Player      @relation("Player2Matches", fields: [player2Id], references: [id])
+  player2Id  String
+  score1     Int         @default(0)
+  score2     Int         @default(0)
+  status     MatchStatus @default(ONGOING)
+  winner     Player?     @relation("MatchWinner", fields: [winnerId], references: [id])
+  winnerId   String?
+  rounds     Round[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model Round {
+  id            String    @id @default(uuid())
+  match         Match     @relation(fields: [matchId], references: [id])
+  matchId       String
+  word          String
+  revealedTiles Boolean[]
+  winner        Player?   @relation("RoundWinner", fields: [winnerId], references: [id])
+  winnerId      String?
+  roundNumber   Int
+  guesses       Guess[]
+  createdAt     DateTime  @default(now())
+  endedAt       DateTime?
+}
+
+model Guess {
+  id        String   @id @default(uuid())
+  round     Round    @relation(fields: [roundId], references: [id])
+  roundId   String
+  player    Player   @relation(fields: [playerId], references: [id])
+  playerId  String
+  guess     String
+  isCorrect Boolean  @default(false)
+  timestamp DateTime @default(now())
+}
+
+enum MatchStatus {
+  ONGOING
+  COMPLETED
+}
