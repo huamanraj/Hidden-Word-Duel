@@ -17,6 +17,7 @@ export class RoundService {
     this.tickIntervalMs = Number(config.get('TICK_INTERVAL_MS') ?? 5000);
   }
 
+  // initialises fresh round state with no revealed tiles or recorded guesses
   createRound(roundId: string, word: string): RoundState {
     return {
       roundId,
@@ -31,6 +32,7 @@ export class RoundService {
     };
   }
 
+  // opens a new guess window, clears prior guesses, and schedules the expire callback
   startTick(
     state: GameState,
     emit: TickEmitter,
@@ -57,6 +59,7 @@ export class RoundService {
     }, this.tickIntervalMs);
   }
 
+  // picks a random unrevealed tile, marks it revealed, and broadcasts the letter
   revealNextTile(
     state: GameState,
     emit: TickEmitter,
@@ -77,6 +80,7 @@ export class RoundService {
     return { allRevealed: round.revealedTiles.every(Boolean) };
   }
 
+  // converts the boolean revealed array into the index/letter format the client expects
   serializeTiles(round: RoundState): { index: number; letter: string | null }[] {
     return round.revealedTiles.map((revealed, i) => ({
       index: i,
@@ -84,6 +88,7 @@ export class RoundService {
     }));
   }
 
+  // cancels the tick timer and marks the tick inactive so late guesses are rejected
   stopTick(state: GameState) {
     const r = state.currentRound;
     if (r?.tickTimer) clearTimeout(r.tickTimer);

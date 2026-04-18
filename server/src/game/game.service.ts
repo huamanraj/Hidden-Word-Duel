@@ -33,14 +33,17 @@ export class GameService {
     this.pointsToWin = Number(config.get('POINTS_TO_WIN') ?? 3);
   }
 
+  // wires the gateway's broadcast function so services can emit without importing the gateway
   setEmitter(emit: TickEmitter) {
     this.emitter = emit;
   }
 
+  // returns in-memory match state for read-only checks in the gateway
   getState(matchId: string) {
     return this.games.get(matchId);
   }
 
+  // creates in-memory match state after the lobby pairs two players
   async initMatch(args: {
     matchId: string;
     player1Id: string;
@@ -67,6 +70,7 @@ export class GameService {
     this.games.set(args.matchId, state);
   }
 
+  // registers a socket id for the player and cancels any pending disconnect forfeit
   attachSocket(matchId: string, playerId: string, socketId: string) {
     const state = this.games.get(matchId);
     if (!state) return;
@@ -78,10 +82,12 @@ export class GameService {
     }
   }
 
+  // returns the other player's id given one player's id
   opponentOf(state: GameState, playerId: string) {
     return state.player1Id === playerId ? state.player2Id : state.player1Id;
   }
 
+  // picks a random word, persists the round, then starts the first tick
   async startNextRound(matchId: string) {
     const state = this.games.get(matchId);
     if (!state || state.ended) return;
@@ -107,6 +113,7 @@ export class GameService {
     );
   }
 
+  // called when a tick timer fires; reveals a tile then starts the next tick or ends the round
   private async onTickExpire(matchId: string) {
     const state = this.games.get(matchId);
     if (!state?.currentRound) return;
@@ -120,6 +127,7 @@ export class GameService {
     );
   }
 
+  // validates a player's guess and ends the round if it is correct
   async handleGuess(args: {
     matchId: string;
     playerId: string;
@@ -172,6 +180,7 @@ export class GameService {
     return {};
   }
 
+  // stops the tick timer, updates scores, persists the result, then schedules the next round or match end
   private async endRound(matchId: string, winnerId: string | null) {
     const state = this.games.get(matchId);
     if (!state?.currentRound) return;
@@ -211,6 +220,7 @@ export class GameService {
     }
   }
 
+  // finalizes scores in the db, broadcasts match end, then evicts state after a cooldown
   private async endMatch(matchId: string) {
     const state = this.games.get(matchId);
     if (!state || state.ended) return;
@@ -235,6 +245,7 @@ export class GameService {
     setTimeout(() => this.games.delete(matchId), 60_000);
   }
 
+  // notifies the opponent and starts a forfeit countdown when a player's socket drops
   handleDisconnect(playerId: string, socketId: string) {
     for (const state of this.games.values()) {
       if (state.ended) continue;
@@ -256,6 +267,7 @@ export class GameService {
     }
   }
 
+  // builds a per-player view of match state used for initial join and reconnect hydration
   snapshotFor(matchId: string, playerId: string) {
     const state = this.games.get(matchId);
     if (!state) return null;

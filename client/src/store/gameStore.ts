@@ -108,10 +108,14 @@ const initial = {
 
 export const useGameStore = create<GameStore>((set) => ({
   ...initial,
+  // stores local player id and display name after joining lobby
   setIdentity: ({ playerId, username }) => set({ playerId, username }),
+  // stores matched opponent info and clears stale round/match results
   setMatch: ({ matchId, opponentUsername }) =>
     set({ matchId, opponentUsername, matchResult: null, roundResult: null }),
+  // tracks which seat this client occupies so scores render in correct order
   setIsPlayer1: (v) => set({ isPlayer1: v }),
+  // resets tile grid and guess state when the server starts a new round
   startRound: ({ roundId, wordLength, roundNumber, totalRounds }) =>
     set({
       roundId,
@@ -122,6 +126,7 @@ export const useGameStore = create<GameStore>((set) => ({
       roundResult: null,
       hasGuessedThisTick: false,
     }),
+  // opens the guess window and syncs the current revealed tiles from server
   tickStart: ({ tickNumber, timeRemaining, revealedTiles }) =>
     set({
       tickNumber,
@@ -131,24 +136,33 @@ export const useGameStore = create<GameStore>((set) => ({
       tickEndsAt: Date.now() + timeRemaining,
       revealedTiles: revealedTiles.map((t) => ({ letter: t.letter })),
     }),
+  // updates a single tile and closes the guess window for this tick
   revealTile: ({ index, letter }) =>
     set((s) => {
       const next = s.revealedTiles.slice();
       next[index] = { letter };
       return { revealedTiles: next, tickActive: false };
     }),
+  // prevents further guesses after the player has submitted one this tick
   guessLocked: () => set({ hasGuessedThisTick: true }),
+  // stores round outcome and disables the guess input until next round
   setRoundResult: (r) => set({ roundResult: r, tickActive: false }),
+  // stores final match outcome and disables the guess input
   setMatchResult: (r) => set({ matchResult: r, tickActive: false }),
+  // records opponent drop and the deadline before they forfeit
   setOpponentDisconnected: (graceMs) =>
     set({
       opponentConnected: false,
       disconnectGraceEndsAt: Date.now() + graceMs,
     }),
+  // clears the disconnect banner when the opponent reconnects in time
   setOpponentReconnected: () =>
     set({ opponentConnected: true, disconnectGraceEndsAt: null }),
+  // surfaces server-sent error codes to the ui
   setError: (e) => set({ lastError: e }),
+  // hides the round result overlay so the next round can render cleanly
   clearRoundResult: () => set({ roundResult: null }),
+  // replaces the full local state with a server-authoritative snapshot on rejoin
   applySnapshot: (snap) =>
     set(() => {
       const tiles: TileState[] = snap.round
@@ -171,5 +185,6 @@ export const useGameStore = create<GameStore>((set) => ({
         tickDurationMs: snap.round?.timeRemaining || 5000,
       };
     }),
+  // wipes all game state when navigating away from a match
   reset: () => set({ ...initial }),
 }));

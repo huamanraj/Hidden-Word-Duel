@@ -24,6 +24,7 @@ export class GameGateway
 
   constructor(private readonly game: GameService) {}
 
+  // injects the socket.io broadcast function into game service after the server is ready
   onModuleInit() {
     this.game.setEmitter((matchId, event, payload) => {
       this.server.to(roomOf(matchId)).emit(event, payload);
@@ -34,11 +35,13 @@ export class GameGateway
     this.logger.log('GameGateway initialized');
   }
 
+  // delegates disconnect handling to game service which manages forfeit timers
   handleDisconnect(client: Socket) {
     const playerId = client.data?.playerId as string | undefined;
     if (playerId) this.game.handleDisconnect(playerId, client.id);
   }
 
+  // validates the player belongs to the match, then sends a snapshot and starts the first round if needed
   @SubscribeMessage('joinMatch')
   async onJoinMatch(
     @ConnectedSocket() client: Socket,
@@ -71,6 +74,7 @@ export class GameGateway
     }
   }
 
+  // forwards the guess to game service which handles all validation and scoring
   @SubscribeMessage('submitGuess')
   async onSubmitGuess(
     @ConnectedSocket() client: Socket,
@@ -93,6 +97,7 @@ export class GameGateway
     if (result.error) client.emit('error', result.error);
   }
 
+  // responds to client heartbeat pings by re-sending the current snapshot
   @SubscribeMessage('pingTick')
   onPingTick(
     @ConnectedSocket() client: Socket,
@@ -103,6 +108,7 @@ export class GameGateway
   }
 }
 
+// scopes socket.io rooms to individual matches to avoid cross-match broadcasts
 function roomOf(matchId: string) {
   return `match:${matchId}`;
 }

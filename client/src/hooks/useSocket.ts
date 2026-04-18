@@ -7,6 +7,7 @@ const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001";
 
 let shared: Socket | null = null;
 
+// returns a single socket instance shared across the entire app lifetime
 export function getSharedSocket(): Socket {
   if (!shared) {
     shared = io(WS_URL, {
@@ -19,6 +20,7 @@ export function getSharedSocket(): Socket {
   return shared;
 }
 
+// tracks connection state so components can gate actions on live socket availability
 export function useSocket() {
   const [connected, setConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
